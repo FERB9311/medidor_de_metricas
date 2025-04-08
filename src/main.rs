@@ -16,6 +16,6 @@ fn main(){
         let procesos = obtener_top_procesos();
         guardar_csv(cpu, mem, procesos);
 
-        thread::sleep(Duration::from_secs(600));
+        thread::sleep(Duration::from_secs(10));
     }
 }
