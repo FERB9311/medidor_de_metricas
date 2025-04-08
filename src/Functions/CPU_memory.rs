@@ -1,12 +1,27 @@
-use sysinfo::{System, SystemExt, CpuExt};
+use sysinfo::{System, SystemExt, CpuExt, ComponentExt};
 
-pub fn obtener_metricas_basicas() {
+pub fn obtener_info_cpu() {
     let mut sys = System::new_all();
-    sys.refresh_all();
 
-    let cpu_uso = sys.global_cpu_info().cpu_usage();
-    let memoria_uso = sys.used_memory() / 1024;
+    // Actualizar datos del sistema
+    sys.refresh_cpu();
+    sys.refresh_components();
 
-    println!("CPU: {}%", cpu_uso);
-    println!("Memoria usada: {} MB", memoria_uso);
+    // Info por núcleo
+    for (i, cpu) in sys.cpus().iter().enumerate() {
+        println!("Núcleo {}:", i);
+        println!("  Uso: {:.2}%", cpu.cpu_usage());
+        println!("  Frecuencia: {} MHz", cpu.frequency());
+    }
+
+    // Temperaturas (puede variar según plataforma)
+    println!("\nTemperaturas detectadas:");
+    for componente in sys.components() {
+        println!(
+            "  {}: {:.1} °C",
+            componente.label(),
+            componente.temperature()
+        );
+    }
 }
+

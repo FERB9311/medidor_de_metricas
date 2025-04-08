@@ -1,8 +1,8 @@
 mod Functions;
 
-use Functions::CPU_memory::obtener_metricas_basicas;
+use Functions::CPU_memory::obtener_info_cpu;
 
 fn main() {
     println!("Hello, world!");
-    obtener_metricas_basicas();
+    obtener_info_cpu();
 }
