@@ -1,59 +1,52 @@
 mod Functions;
 
-use Functions::{
-    cpu::obtener_info_cpu,
-    memoria::obtener_info_memoria,
-    procesos::obtener_top_procesos,
-    guardar::guardar_csv
-};
+use sysinfo::{System, SystemExt, CpuExt}; // Importaciones necesarias
+use Functions::{procesos::obtener_top_procesos, guardar::guardar_csv};
+use std::{thread, time::{Duration, Instant}, process::Command, path::Path, fs};
 
-use std::{
-    thread,
-    time::{Duration, Instant},
-    process::Command,
-    path::Path,
-    fs,
-};
+fn main() {
+    let mut sys = System::new();
+    sys.refresh_all();
 
-//use std::{thread, time::Duration};
-
-fn main(){
     let inicio = Instant::now();
-    let mut reporte_generado_automatico = false;
+    let mut reporte_generado = false;
 
     loop {
-        let cpu = obtener_info_cpu();
-        let mem = obtener_info_memoria();
-        let procesos = obtener_top_procesos();
+        sys.refresh_cpu();
+        sys.refresh_memory();
+        sys.refresh_processes();
+
+        let cpu = (
+            sys.global_cpu_info().cpu_usage().clamp(0.0, 100.0),
+            sys.cpus().iter().map(|c| c.cpu_usage().clamp(0.0, 100.0)).collect()
+        );
+
+        let mem = (
+            sys.used_memory() / 1024,
+            sys.available_memory() / 1024,
+            sys.used_swap() / 1024
+        );
+
+        let procesos = obtener_top_procesos(&sys);
         guardar_csv(cpu, mem, procesos);
 
-        thread::sleep(Duration::from_secs(30));
-
-        if Path::new("generar_reporte.txt").exists(){
-            println!("[INFO] Archivo de control detectado. Generando reporte...");
+        if Path::new("generar_reporte.txt").exists() {
             ejecutar_reporte();
-            fs::remove_file("generar_reporte.txt").ok(); //Eliminar archivo de control.
+            fs::remove_file("generar_reporte.txt").unwrap();
         }
 
-        if !reporte_generado_automatico &&
-            inicio.elapsed() >= Duration::from_secs(60 * 60 * 24 * 2) //2 días.
-            {
-                println!("[INFO] Han pasado 2 días. Generando reporte automático...");
-                ejecutar_reporte();
-                reporte_generado_automatico = true;
-            }
+        if !reporte_generado && inicio.elapsed() >= Duration::from_secs(172800) {
+            ejecutar_reporte();
+            reporte_generado = true;
+        }
+
+        thread::sleep(Duration::from_secs(30));
     }
 }
 
-fn ejecutar_reporte(){
-    let status = Command::new("python")
+fn ejecutar_reporte() {
+    Command::new("python")
         .arg("scripts/generar_reporte.py")
         .status()
-        .expect("Error al ejecutar el script de Python");
-
-        if status.success(){
-            println!("[OK] Reporte generado exitosamente.");
-        } else{
-            eprintln!("[ERROR] Falló la generación del reporte.");
-        }
+        .expect("Error al ejecutar script Python");
 }
