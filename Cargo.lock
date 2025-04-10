@@ -942,6 +942,7 @@ dependencies = [
  "rusqlite",
  "serde_json",
  "sysinfo",
+ "winapi",
  "windows",
  "windows-service",
 ]
