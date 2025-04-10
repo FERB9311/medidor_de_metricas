@@ -40,13 +40,9 @@ fn main() {
         let procesos = obtener_top_procesos(&sys);
         
         // Solo verificar disco cada 10 iteraciones (5 minutos)
-        let disk_info = if disk_check_counter % 10 == 0 {
-            Some(get_disk())
-        } else {
-            None
-        };
+        let disk_info = Some(get_disk());
 
-        let disk_perf = if disk_check_counter % 30 == 0 { // Cada 15 minutos
+        let disk_perf = if disk_check_counter % 6 == 0 { // Cada 3 minutos (6 iteraciones de 30 segundos)
             Some(measure_disk_performance())
         } else {
             None
