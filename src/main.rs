@@ -14,9 +14,9 @@ fn main() {
 
     let inicio = Instant::now();
     let mut reporte_generado = false;
-    let mut disk_check_counter = 0;
 
     loop {
+        // Refrescar datos del sistema cada 5 minutos
         sys.refresh_cpu();
         sys.refresh_memory();
         sys.refresh_processes();
@@ -26,11 +26,10 @@ fn main() {
             sys.cpus().iter().map(|c| c.cpu_usage().clamp(0.0, 100.0)).collect()
         );
 
-        // Obtenemos la información de memoria de ambas formas para compatibilidad
+        // Obtener información de memoria
         let mem_simple = obtener_info_memoria();
         let (total_memory, used_memory, available_memory, total_swap, used_swap) = get_memory();
         
-        // Usamos la información detallada de memoria
         let mem = (
             used_memory,    // mem_usada en MB
             available_memory, // mem_libre en MB
@@ -38,45 +37,45 @@ fn main() {
         );
 
         let procesos = obtener_top_procesos(&sys);
-        
-        // Solo verificar disco cada 10 iteraciones (5 minutos)
-        let disk_info = Some(get_disk());
-
-        let disk_perf = if disk_check_counter % 6 == 0 { // Cada 3 minutos (6 iteraciones de 30 segundos)
-            Some(measure_disk_performance())
-        } else {
-            None
-        };
+        let disk_info = get_disk();
+        let disk_perf = measure_disk_performance();
 
         guardar_csv(
             cpu, 
             mem, 
             procesos, 
-            disk_info, 
-            disk_perf,
-            total_memory,  // Pasamos la memoria total adicional
-            total_swap     // Pasamos el swap total adicional
+            Some(disk_info), 
+            Some(disk_perf),
+            total_memory,
+            total_swap
         );
-        
-        disk_check_counter += 1;
 
+        // Verificar si se debe generar el reporte manual cada 5 minutos
         if Path::new("generar_reporte.txt").exists() {
             ejecutar_reporte();
             fs::remove_file("generar_reporte.txt").unwrap();
         }
 
+        // Reporte automático después de 48 horas (solo una vez)
         if !reporte_generado && inicio.elapsed() >= Duration::from_secs(172800) {
             ejecutar_reporte();
             reporte_generado = true;
         }
 
-        thread::sleep(Duration::from_secs(30));
+        // Esperar 5 minutos (300 segundos) antes de la próxima iteración
+        thread::sleep(Duration::from_secs(300));
     }
 }
 
 fn ejecutar_reporte() {
+    // Copiar el archivo CSV actual a un lugar donde Python pueda acceder
+    let _ = std::fs::copy("data/historial.csv", "historial_temp.csv");
+    
     Command::new("python")
         .arg("scripts/generar_reporte.py")
         .status()
         .expect("Error al ejecutar script Python");
+    
+    // Limpiar archivo temporal
+    let _ = std::fs::remove_file("historial_temp.csv");
 }
