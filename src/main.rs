@@ -27,7 +27,7 @@ fn main(){
         let procesos = obtener_top_procesos();
         guardar_csv(cpu, mem, procesos);
 
-        thread::sleep(Duration::from_secs(10));
+        thread::sleep(Duration::from_secs(30));
 
         if Path::new("generar_reporte.txt").exists(){
             println!("[INFO] Archivo de control detectado. Generando reporte...");
